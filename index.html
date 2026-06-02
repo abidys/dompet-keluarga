@@ -100,7 +100,7 @@
         const email = document.getElementById('loginEmail').value;
         const password = document.getElementById('loginPassword').value;
 
-        const { data, error } = await supabase.auth.signUp({ email, password });
+        const { data, error } = await supabaseKu.auth.signUp({ email, password });
 
         if (error) {
             alert("Respons Supabase: " + error.message);
