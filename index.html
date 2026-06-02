@@ -64,8 +64,8 @@
     const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZxcnppZHl3cG9yaWp0a3JldXh2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAzNzIxNjIsImV4cCI6MjA5NTk0ODE2Mn0.nrprizzjSQiUprkwC6BHjCZwfbccU0nDW2I0-MbykLM";
     // ---------------------------------------------------------
 
-    // Inisialisasi Supabase
-    const supabaseKu = Supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+    // Inisialisasi Supabase (Nama variabel diganti jadi supabaseKu agar tidak bentrok)
+    const supabaseKu = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
     // Elemen Tampilan
     const loginSection = document.getElementById('loginSection');
@@ -76,7 +76,7 @@
     const totalSaldo = document.getElementById('totalSaldo');
 
     // Cek apakah user sudah login sebelumnya
-    supabase.auth.getSession().then(({ data }) => {
+    supabaseKu.auth.getSession().then(({ data }) => {
         if (data.session) {
             tampilkanHalamanUtama();
         }
@@ -88,7 +88,7 @@
         const email = document.getElementById('loginEmail').value;
         const password = document.getElementById('loginPassword').value;
 
-        const { error } = await supabase.auth.signInWithPassword({ email, password });
+        const { error } = await supabaseKu.auth.signInWithPassword({ email, password });
 
         if (error) {
             alert("Gagal masuk: " + error.message);
@@ -99,7 +99,7 @@
 
     // Proses Logout
     document.getElementById('btnLogout').addEventListener('click', async () => {
-        await supabase.auth.signOut();
+        await supabaseKu.auth.signOut();
         loginSection.classList.remove('hidden');
         mainSection.classList.add('hidden');
     });
@@ -114,7 +114,7 @@
     async function muatDataTransaksi() {
         list.innerHTML = '<li>Memuat data...</li>';
         
-        let { data: transaksi, error } = await supabase
+        let { data: transaksi, error } = await supabaseKu
             .from('transaksi')
             .select('*')
             .order('id', { ascending: false });
@@ -156,9 +156,9 @@
         const jumlah = document.getElementById('jumlah').value;
         const tipe = document.getElementById('tipe').value;
 
-        const { data: { user } } = await supabase.auth.getUser();
+        const { data: { user } } = await supabaseKu.auth.getUser();
 
-        const { error } = await supabase
+        const { error } = await supabaseKu
             .from('transaksi')
             .insert([{ deskripsi, jumlah, tipe, user_id: user.id }]);
 
