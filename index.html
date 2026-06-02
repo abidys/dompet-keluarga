@@ -33,6 +33,7 @@
             <input type="email" id="loginEmail" placeholder="Email Anda" required>
             <input type="password" id="loginPassword" placeholder="Password" required>
             <button type="submit">Masuk</button>
+            <button type="button" id="btnDaftar" style="background:#007bff; margin-top:5px;">Daftar Akun Baru (Tes HP)</button>
         </form>
         <p style="text-align:center; font-size:12px; color:#666;">Hubungi kepala keluarga jika belum punya akun.</p>
     </div>
@@ -94,6 +95,17 @@
             alert("Gagal masuk: " + error.message);
         } else {
             tampilkanHalamanUtama();
+        }
+    document.getElementById('btnDaftar').addEventListener('click', async () => {
+        const email = document.getElementById('loginEmail').value;
+        const password = document.getElementById('loginPassword').value;
+
+        const { data, error } = await supabase.auth.signUp({ email, password });
+
+        if (error) {
+            alert("Respons Supabase: " + error.message);
+        } else {
+            alert("Sukses Terhubung! Silakan cek email masuk untuk konfirmasi.");
         }
     });
 
