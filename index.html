@@ -1,0 +1,175 @@
+```html
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dompet Keluarga Aman</title>
+    <!-- Mengambil library Supabase agar bisa konek ke database -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        body { font-family: 'Segoe UI', Arial, sans-serif; background-color: #f4f6f9; margin: 0; padding: 20px; }
+        .container { max-width: 500px; margin: auto; background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); }
+        h2, h3 { text-align: center; color: #333; }
+        .balance-box { background: #007bff; color: white; padding: 15px; border-radius: 8px; text-align: center; font-size: 24px; font-weight: bold; margin-bottom: 20px; }
+        form { display: flex; flex-direction: column; gap: 10px; margin-bottom: 20px; }
+        input, select, button { padding: 12px; border: 1px solid #ddd; border-radius: 6px; font-size: 16px; }
+        button { background: #28a745; color: white; border: none; cursor: pointer; font-weight: bold; }
+        button:hover { background: #218838; }
+        .btn-logout { background: #dc3545; margin-top: 10px; }
+        ul { list-style: none; padding: 0; }
+        li { background: #f8f9fa; padding: 12px; border-left: 5px solid #ccc; margin-bottom: 8px; border-radius: 4px; display: flex; justify-content: space-between; }
+        li.pemasukan { border-left-color: #28a745; }
+        li.pengeluaran { border-left-color: #dc3545; }
+        .hidden { display: none; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <!-- HALAMAN LOGIN -->
+    <div id="loginSection">
+        <h2>🔒 Login Dompet Keluarga</h2>
+        <form id="loginForm">
+            <input type="email" id="loginEmail" placeholder="Email Anda" required>
+            <input type="password" id="loginPassword" placeholder="Password" required>
+            <button type="submit">Masuk</button>
+        </form>
+        <p style="text-align:center; font-size:12px; color:#666;">Hubungi kepala keluarga jika belum punya akun.</p>
+    </div>
+
+    <!-- HALAMAN UTAMA (Akan muncul setelah sukses login) -->
+    <div id="mainSection" class="hidden">
+        <h2>💰 Dompet Keluarga</h2>
+        <div class="balance-box" id="totalSaldo">Rp 0</div>
+
+        <form id="transactionForm">
+            <input type="text" id="deskripsi" placeholder="Contoh: Belanja Bulanan, Gaji" required>
+            <input type="number" id="jumlah" placeholder="Nominal (Rp)" required>
+            <select id="tipe">
+                <option value="pemasukan">Pemasukan</option>
+                <option value="pengeluaran">Pengeluaran</option>
+            </select>
+            <button type="submit">Tambah Transaksi</button>
+        </form>
+
+        <h3>Riwayat Transaksi</h3>
+        <ul id="transactionList"></ul>
+        <button class="btn-logout" id="btnLogout">Keluar / Logout</button>
+    </div>
+</div>
+
+<script>
+    // --- GANTI KEDUA VARIABEL INI DENGAN KUNCI SUPABASE ANDA ---
+    const SUPABASE_URL = https://fqrzidywporijtkreuxv.supabase.co;
+    const SUPABASE_KEY = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZxcnppZHl3cG9yaWp0a3JldXh2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAzNzIxNjIsImV4cCI6MjA5NTk0ODE2Mn0.nrprizzjSQiUprkwC6BHjCZwfbccU0nDW2I0-MbykLM;
+    // ---------------------------------------------------------
+
+    // Inisialisasi Supabase
+    const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+    // Elemen Tampilan
+    const loginSection = document.getElementById('loginSection');
+    const mainSection = document.getElementById('mainSection');
+    const loginForm = document.getElementById('loginForm');
+    const transactionForm = document.getElementById('transactionForm');
+    const list = document.getElementById('transactionList');
+    const totalSaldo = document.getElementById('totalSaldo');
+
+    // Cek apakah user sudah login sebelumnya
+    supabase.auth.getSession().then(({ data }) => {
+        if (data.session) {
+            tampilkanHalamanUtama();
+        }
+    });
+
+    // Proses Login
+    loginForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const email = document.getElementById('loginEmail').value;
+        const password = document.getElementById('loginPassword').value;
+
+        const { error } = await supabase.auth.signInWithPassword({ email, password });
+
+        if (error) {
+            alert("Gagal masuk: " + error.message);
+        } else {
+            tampilkanHalamanUtama();
+        }
+    });
+
+    // Proses Logout
+    document.getElementById('btnLogout').addEventListener('click', async () => {
+        await supabase.auth.signOut();
+        loginSection.classList.remove('hidden');
+        mainSection.classList.add('hidden');
+    });
+
+    function tampilkanHalamanUtama() {
+        loginSection.classList.add('hidden');
+        mainSection.classList.remove('hidden');
+        muatDataTransaksi();
+    }
+
+    // Mengambil data dari Internet (Supabase)
+    async function muatDataTransaksi() {
+        list.innerHTML = '<li>Memuat data...</li>';
+        
+        let { data: transaksi, error } = await supabase
+            .from('transaksi')
+            .select('*')
+            .order('id', { ascending: false });
+
+        if (error) {
+            alert("Gagal mengambil data: " + error.message);
+            return;
+        }
+
+        list.innerHTML = '';
+        let saldo = 0;
+
+        transaksi.forEach((t) => {
+            const sign = t.tipe === 'pemasukan' ? '+' : '-';
+            const item = document.createElement('li');
+            item.classList.add(t.tipe);
+            
+            item.innerHTML = `
+                <span>${t.deskripsi}</span>
+                <span>${sign} Rp ${Number(t.jumlah).toLocaleString('id-ID')}</span>
+            `;
+            list.appendChild(item);
+
+            if (t.tipe === 'pemasukan') {
+                saldo += Number(t.jumlah);
+            } else {
+                saldo -= Number(t.jumlah);
+            }
+        });
+
+        totalSaldo.innerText = `Rp ${saldo.toLocaleString('id-ID')}`;
+        if(saldo < 0) { totalSaldo.style.background = '#dc3545'; } else { totalSaldo.style.background = '#007bff'; }
+    }
+
+    // Menginput data baru ke Internet
+    transactionForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const deskripsi = document.getElementById('deskripsi').value;
+        const jumlah = document.getElementById('jumlah').value;
+        const tipe = document.getElementById('tipe').value;
+
+        const { data: { user } } = await supabase.auth.getUser();
+
+        const { error } = await supabase
+            .from('transaksi')
+            .insert([{ deskripsi, jumlah, tipe, user_id: user.id }]);
+
+        if (error) {
+            alert("Gagal menyimpan: " + error.message);
+        } else {
+            transactionForm.reset();
+            muatDataTransaksi();
+        }
+    });
+</script>
+</body>
+</html>
